@@ -8,7 +8,7 @@ to set limits on the cache.
 ## Usage
 
 ```sh
-python cachegroom.py <cache-root> [--dry-run] [--max-size=M] [--max-count=C] [--min-age=m] [--max-age=M]
+python p4p-cachegroom.py <cache-root> [--dry-run] [--max-size=M] [--max-count=C] [--min-age=m] [--max-age=M]
 ```
 
 This will look for versioned perforce file in the `cache-root` folder and apply the provide policy.
@@ -25,9 +25,9 @@ is specified alone, then the total (assuming all options are specified) can be f
 
 ### Examples
 
-1. `python cachegroom.py /mnt/p4pcache --max-size=400G --min-age=28`
+1. `python p4p-cachegroom.py /mnt/p4pcache --max-size=400G --min-age=28`
    
    Limit the cache to 400G if possible, not throwing away anything that has been touched more recently than in the last four weeks.
-2. `python cachegroom.py /mnt/p4cache --max-count=1000 --max-age=16`
+2. `python p4p-cachegroom.py /mnt/p4cache --max-count=1000 --max-age=16`
    
    Limit the cache to 1000 files, and not store anything that hasn't been accessed for the last 16 days.
