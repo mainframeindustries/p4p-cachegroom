@@ -22,3 +22,12 @@ Using set notation, if `min-age`, `max-size` , `max-count` and `max-age` represe
 is specified alone, then the total (assuming all options are specified) can be found by:
 
 `Union(min_age, Intersection(max-size, max-count, max-age))`
+
+### Examples
+
+1. `python cachegroom.py /mnt/p4pcache --max-size=400G --min-age=28`
+   
+   Limit the cache to 400G if possible, not throwing away anything that has been touched more recently than in the last four weeks.
+2. `python cachegroom.py /mnt/p4cache --max-count=1000 --max-age=16`
+   
+   Limit the cache to 1000 files, and not store anything that hasn't been accessed for the last 16 days.
