@@ -38,11 +38,14 @@ def find_versioned_files(root):
             entries.append((s.st_atime, s.st_size, filepath))
     return entries
 
+
 # text files end with ,v.
 # individual binary files are in folders ending with ,d and
 # have names like 1.n where n is the version number.
 # all can have a .gz tacked on.
 BIN = re.compile(r"1\.\d+")
+
+
 def is_versioned(filename):
     if filename.endswith(",v") or filename.endswith(".gz"):
         return True
@@ -50,8 +53,9 @@ def is_versioned(filename):
         return True
     return False
 
+
 def sum_size(files):
-    """ convenience function to add up the sizes of files """
+    """convenience function to add up the sizes of files"""
     return sum(t[1] for t in files)
 
 
@@ -180,7 +184,10 @@ def main():
         i = i_keep
         i_keep = max(i_keep, len(files) - args.max_count)
         if i_keep != i:
-            print("--max-count=%r limiting kept files to %d" % (args.max_count, len(files) - i_keep))
+            print(
+                "--max-count=%r limiting kept files to %d"
+                % (args.max_count, len(files) - i_keep)
+            )
         else:
             print("--max-count=%r not limiting kept files" % (args.max_count,))
 
@@ -188,16 +195,24 @@ def main():
         i = i_keep
         i_keep = max(i_keep, find_size_limit(files, args.max_size))
         if i_keep != i:
-            print("--max-size=%s limiting kept files to %d" % (format_size2(args.max_size), len(files) - i_keep))
+            print(
+                "--max-size=%s limiting kept files to %d"
+                % (format_size2(args.max_size), len(files) - i_keep)
+            )
         else:
-            print("--max-size=%r not limiting kept files" % (format_size2(args.max_size),))
+            print(
+                "--max-size=%r not limiting kept files" % (format_size2(args.max_size),)
+            )
 
     if args.max_age is not None:
         i = i_keep
         limit = now - datetime.timedelta(days=args.max_age)
         i_keep = max(i_keep, find_atime_limit(files, timestamp_from_datetime(limit)))
         if i_keep != i:
-            print("--max-age=%r limiting kept files to %d" % (args.max_age, len(files) - i_keep))
+            print(
+                "--max-age=%r limiting kept files to %d"
+                % (args.max_age, len(files) - i_keep)
+            )
         else:
             print("--max-age=%r not limiting kept files" % (args.max_age,))
 
@@ -208,7 +223,10 @@ def main():
         limit = now - datetime.timedelta(days=args.min_age)
         i_keep = min(i_keep, find_atime_limit(files, timestamp_from_datetime(limit)))
         if i_keep != i:
-            print("--min-age=%r forcing kept files to %d" % (args.min_age, len(files) - i_keep))
+            print(
+                "--min-age=%r forcing kept files to %d"
+                % (args.min_age, len(files) - i_keep)
+            )
         else:
             print("--min-age=%r not forcing kept files" % (args.min_age,))
 
