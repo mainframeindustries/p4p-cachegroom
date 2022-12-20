@@ -1,12 +1,13 @@
 #! /bin/env python
 
 from __future__ import print_function
-import os
-import re
-import os.path
+
 import argparse
 import datetime
 import logging
+import os
+import os.path
+import re
 from bisect import bisect_left
 
 logger = logging.getLogger(__name__)
@@ -59,7 +60,17 @@ def sum_size(files):
     return sum(t[1] for t in files)
 
 
-def find_size_limit(files, limit_size):
+def cumulative_sum(values):
+    """create a cumulative sum, e.g. of file sizes"""
+    it = iter(values)
+    last = next(it)
+    yield last
+    for v in it:
+        last += v
+        yield last
+
+
+def find_size_limit_old(files, limit_size):
     """
     Find the place in the list where the size limit is exceeded
     """
@@ -69,6 +80,17 @@ def find_size_limit(files, limit_size):
             return i  # we found the cut-off point
         size -= f[1]
     return i
+
+
+def find_size_limit(cumulative_sizes, limit_size):
+    """
+    Using cumulative sizes, find the place of old files to throw away
+    Return the first index that we keep
+    """
+    # what is the cumulative target to throw away?
+    target = cumulative_sizes[-1] - limit_size
+    # find index where cumulative size is greater or equal to what is needed to throw away
+    return find_ge(cumulative_sizes, target) + 1
 
 
 def find_atime_limit(files, atime):
@@ -153,6 +175,11 @@ def main():
 
     parser.add_argument("--dry-run", action="store_true", help="do not delete anything")
     parser.add_argument("--max-size", type=unitsize, help="maximum total size of files")
+    parser.add_argument(
+        "--max-size-hard",
+        type=unitsize,
+        help="maximum total size of files, overriding --min-age",
+    )
     parser.add_argument("--max-count", type=int, help="maximum total number of files")
     parser.add_argument(
         "--min-age", type=int, help="don't throw away anything younger than this (days)"
@@ -168,11 +195,18 @@ def main():
     print("Trimming P4 versioned file folder %r:" % args.root)
 
     files = find_versioned_files(args.root)
+
     size = sum_size(files)
     print("Found %d files, %s" % (len(files), format_size2(size)))
 
+    if not files:
+        return  # without any files, just quit
+
     # sort files according to access time, oldest first (lowest timestamp)
     files.sort()
+
+    # and create the cumulative sum
+    cumulative_sizes = list(cumulative_sum([f[1] for f in files]))
 
     # now apply the criteria
     i_keep = 0  # the index of the oldest (lowest timestamp) file we keep
@@ -193,7 +227,7 @@ def main():
 
     if args.max_size is not None:
         i = i_keep
-        i_keep = max(i_keep, find_size_limit(files, args.max_size))
+        i_keep = max(i_keep, find_size_limit(cumulative_sizes, args.max_size))
         if i_keep != i:
             print(
                 "--max-size=%s limiting kept files to %d"
@@ -229,6 +263,21 @@ def main():
             )
         else:
             print("--min-age=%r not forcing kept files" % (args.min_age,))
+
+        if args.max_size_hard is not None:
+            # still, we do provide a way to limit, even min_age, if our disk has limited size.
+            i = i_keep
+            i_keep = max(i_keep, find_size_limit(cumulative_sizes, args.max_size_hard))
+            if i_keep != i:
+                print(
+                    "--max-size-hard=%s limiting kept files to %d"
+                    % (format_size2(args.max_size_hard), len(files) - i_keep)
+                )
+            else:
+                print(
+                    "--max-size-hard=%r not limiting kept files"
+                    % (format_size2(args.max_size_hard),)
+                )
 
     # perform the action
     if not args.dry_run:
