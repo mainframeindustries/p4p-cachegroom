@@ -31,3 +31,12 @@ is specified alone, then the total (assuming all options are specified) can be f
 2. `python p4p-cachegroom.py /mnt/p4cache --max-count=1000 --max-age=16`
    
    Limit the cache to 1000 files, and not store anything that hasn't been accessed for the last 16 days.
+
+
+## Systemd
+
+The `systemd` folder contains service descriptions to both run a `p4p` service and to run a `p4p-cleanup` service regularly
+via timer to manage the cache.  Using `systemd` rather than `cron` has the advantage that the output of the command is
+logged by the `journald` service.
+
+Running `p4p` as a service is preferable than using `p4dctl` since the latter can only log to files.

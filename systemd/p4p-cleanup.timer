@@ -1,0 +1,13 @@
+[Unit]
+Description="Timer for the p4p-cleanup.service"
+
+[Timer]
+# daily at night and four times over working days
+OnCalendar=02:02:00
+OnCalendar=Mon..Fri 09:02:00
+OnCalendar=Mon..Fri 12:02:00
+OnCalendar=Mon..Fri 15:02:00
+OnCalendar=Mon..Fri 18:02:00
+
+[Install]
+WantedBy=timers.target
