@@ -8,6 +8,7 @@ import logging
 import os
 import os.path
 import re
+import sys
 from bisect import bisect_left
 
 logger = logging.getLogger(__name__)
@@ -89,6 +90,11 @@ def find_size_limit(cumulative_sizes, limit_size):
     """
     # what is the cumulative target to throw away?
     target = cumulative_sizes[-1] - limit_size
+    
+    # special case for zero or negative values: we keep everything
+    if target <= 0:
+        return 0
+    
     # find index where cumulative size is greater or equal to what is needed to throw away
     return find_ge(cumulative_sizes, target) + 1
 
@@ -299,6 +305,54 @@ def main():
             print("  atime: %s to %s" % (oldest.isoformat(), youngest.isoformat()))
 
 
+def test():
+    # create a list of files with access times and sizes
+    files = [
+        (1, 100, "a"),
+        (2, 200, "b"),
+        (3, 300, "c"),
+        (4, 400, "d"),
+        (5, 500, "e"),
+    ]
+    files.sort()
+    cumulative_sizes = list(cumulative_sum([f[1] for f in files]))
+    
+    assert cumulative_sizes[-1] == sum(f[1] for f in files)
+    
+    # Files are sorted by access time, oldest is first.  When throwing away files, we work with the index
+    # of the first file we keep.
+    
+    # test find_size_limit().  The method returns the first index that we keep.
+    
+    # for size 0, we won't keep anything, so the first index to keep is 5 (the first index past the last)
+    limit = find_size_limit(cumulative_sizes, 0)
+    assert limit == 5
+    # for size 10000, we keep all files, so the first index to keep is 0
+    assert find_size_limit(cumulative_sizes, 10000) == 0
+    # for size 900, we keep the last two files, so the first index to keep is 3
+    assert find_size_limit(cumulative_sizes, 900) == 3
+    # for size 950, we still only keep the last two files: 3
+    assert find_size_limit(cumulative_sizes, 950) == 3
+    # only when we reach 1200, we keep the last three: 2
+    assert find_size_limit(cumulative_sizes, 1200) == 2
+    
+    # check time limit
+    # for time 0, we keep all files, so the first index to keep is 0
+    assert find_atime_limit(files, 0) == 0
+    # for time 1, we keep all files, so the first index to keep is 0
+    assert find_atime_limit(files, 1) == 0
+    # for time 2, we throw away the oldest file, so the first index to keep is 1
+    assert find_atime_limit(files, 2) == 1
+    # for time 5, we throw away all but the last file, so the first index to keep is 4
+    assert find_atime_limit(files, 5) == 4
+    # for time 6, we throw away all files, so the first index to keep is 5
+    assert find_atime_limit(files, 6) == 5
+    
+    
 if __name__ == "__main__":
+    if len(sys.argv) and sys.argv[1] == "--test":
+        test()
+        sys.exit(0)
+
     logging.basicConfig()
     main()
