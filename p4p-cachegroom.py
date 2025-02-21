@@ -7,6 +7,7 @@ import datetime
 import logging
 import os
 import os.path
+import random
 import re
 import sys
 from bisect import bisect_left
@@ -24,12 +25,27 @@ Can be run once a day by a cron script
 """
 
 
-def find_versioned_files(root):
+def fake_timestamp(days):
+    """
+    Create a fake timestamp that is days old
+    """
+    now = datetime.datetime.utcnow()
+    return (now - datetime.timedelta(days=random.randint(0, days))).timestamp()
+
+
+def find_versioned_files(root, fake=False):
     """
     Look for versioned files in the folder, those ending with known
     Perforce endings for such files.  Return them as a list of
     access time, filesize, pathname, tuples.
     """
+    if fake:
+        # return fake files for testing
+        return [
+            (fake_timestamp(30), random.randint(10, 10000000), "fakefile%d" % i)
+            for i in range(1000)
+        ]
+
     entries = []
     for dirpath, dirnames, filenames in os.walk(root):
         for filename in filenames:
@@ -90,11 +106,11 @@ def find_size_limit(cumulative_sizes, limit_size):
     """
     # what is the cumulative target to throw away?
     target = cumulative_sizes[-1] - limit_size
-    
+
     # special case for zero or negative values: we keep everything
     if target <= 0:
         return 0
-    
+
     # find index where cumulative size is greater or equal to what is needed to throw away
     return find_ge(cumulative_sizes, target) + 1
 
@@ -180,27 +196,42 @@ def main():
     parser.add_argument("root", help="root of versioned files")
 
     parser.add_argument("--dry-run", action="store_true", help="do not delete anything")
-    parser.add_argument("--max-size", type=unitsize, help="maximum total size of files")
+    parser.add_argument(
+        "--max-size", type=unitsize, default=0, help="maximum total size of files"
+    )
     parser.add_argument(
         "--max-size-hard",
         type=unitsize,
+        default=0,
         help="maximum total size of files, overriding --min-age",
     )
-    parser.add_argument("--max-count", type=int, help="maximum total number of files")
+    parser.add_argument(
+        "--max-count", type=int, default=0, help="maximum total number of files"
+    )
     parser.add_argument(
         "--min-age", type=int, help="don't throw away anything younger than this (days)"
     )
     parser.add_argument(
         "--max-age", type=int, help="don't keep anything older than this (days)"
     )
+    parser.add_argument("--verbose", "-v", action="store_true", help="be more verbose")
+    parser.add_argument("--fake", action="store_true", help="dry run with fake files")
 
     args = parser.parse_args()
-    if not (args.max_size or args.max_count or args.max_age):
+    if 0 and not (args.max_size or args.max_count or args.max_age):
         parser.error("At least one of --max-size, --max-count, --max-age required")
+    if args.fake:
+        args.dry_run = True
 
     print("Trimming P4 versioned file folder %r:" % args.root)
+    if args.verbose:
+        print("  max-size: %s" % format_size2(args.max_size))
+        print("  max-count: %r" % args.max_count)
+        print("  max-age: %r" % args.max_age)
+        print("  min-age: %r" % args.min_age)
+        print("  max-size-hard: %r" % args.max_age)
 
-    files = find_versioned_files(args.root)
+    files = find_versioned_files(args.root, args.fake)
 
     size = sum_size(files)
     print("Found %d files, %s" % (len(files), format_size2(size)))
@@ -218,9 +249,9 @@ def main():
     i_keep = 0  # the index of the oldest (lowest timestamp) file we keep
     now = datetime.datetime.utcnow()
 
-    # max-size, max-count and min age, all work to create a lower bound on number of
+    # max-size, max-count and max-age, all work to create a lower bound on number of
     # files to store.  That is, we take the largest index (youngest) file that these produce.
-    if args.max_count is not None:
+    if args.max_count > 0:
         i = i_keep
         i_keep = max(i_keep, len(files) - args.max_count)
         if i_keep != i:
@@ -228,10 +259,10 @@ def main():
                 "--max-count=%r limiting kept files to %d"
                 % (args.max_count, len(files) - i_keep)
             )
-        else:
+        elif args.verbose:
             print("--max-count=%r not limiting kept files" % (args.max_count,))
 
-    if args.max_size is not None:
+    if args.max_size > 0:
         i = i_keep
         i_keep = max(i_keep, find_size_limit(cumulative_sizes, args.max_size))
         if i_keep != i:
@@ -239,7 +270,7 @@ def main():
                 "--max-size=%s limiting kept files to %d"
                 % (format_size2(args.max_size), len(files) - i_keep)
             )
-        else:
+        elif args.verbose:
             print(
                 "--max-size=%r not limiting kept files" % (format_size2(args.max_size),)
             )
@@ -253,7 +284,7 @@ def main():
                 "--max-age=%r limiting kept files to %d"
                 % (args.max_age, len(files) - i_keep)
             )
-        else:
+        elif args.verbose:
             print("--max-age=%r not limiting kept files" % (args.max_age,))
 
     # But now, for min age, it overrides all this.  We don't throw away anything younger
@@ -267,23 +298,24 @@ def main():
                 "--min-age=%r forcing kept files to %d"
                 % (args.min_age, len(files) - i_keep)
             )
-        else:
+        elif args.verbose:
             print("--min-age=%r not forcing kept files" % (args.min_age,))
 
-        if args.max_size_hard is not None:
-            # still, we do provide a way to limit, even min_age, if our disk has limited size.
-            i = i_keep
-            i_keep = max(i_keep, find_size_limit(cumulative_sizes, args.max_size_hard))
-            if i_keep != i:
-                print(
-                    "--max-size-hard=%s limiting kept files to %d"
-                    % (format_size2(args.max_size_hard), len(files) - i_keep)
-                )
-            else:
-                print(
-                    "--max-size-hard=%r not limiting kept files"
-                    % (format_size2(args.max_size_hard),)
-                )
+    # Even with all this, particularly with min-age, we might still have too many files.
+    # So, if we have a hard limit
+    if args.max_size_hard > 0:
+        i = i_keep
+        i_keep = max(i_keep, find_size_limit(cumulative_sizes, args.max_size_hard))
+        if i_keep != i:
+            print(
+                "--max-size-hard=%s limiting kept files to %d"
+                % (format_size2(args.max_size_hard), len(files) - i_keep)
+            )
+        elif args.verbose:
+            print(
+                "--max-size-hard=%r not limiting kept files"
+                % (format_size2(args.max_size_hard),)
+            )
 
     # perform the action
     if not args.dry_run:
@@ -316,14 +348,14 @@ def test():
     ]
     files.sort()
     cumulative_sizes = list(cumulative_sum([f[1] for f in files]))
-    
+
     assert cumulative_sizes[-1] == sum(f[1] for f in files)
-    
+
     # Files are sorted by access time, oldest is first.  When throwing away files, we work with the index
     # of the first file we keep.
-    
+
     # test find_size_limit().  The method returns the first index that we keep.
-    
+
     # for size 0, we won't keep anything, so the first index to keep is 5 (the first index past the last)
     limit = find_size_limit(cumulative_sizes, 0)
     assert limit == 5
@@ -335,7 +367,7 @@ def test():
     assert find_size_limit(cumulative_sizes, 950) == 3
     # only when we reach 1200, we keep the last three: 2
     assert find_size_limit(cumulative_sizes, 1200) == 2
-    
+
     # check time limit
     # for time 0, we keep all files, so the first index to keep is 0
     assert find_atime_limit(files, 0) == 0
@@ -347,8 +379,8 @@ def test():
     assert find_atime_limit(files, 5) == 4
     # for time 6, we throw away all files, so the first index to keep is 5
     assert find_atime_limit(files, 6) == 5
-    
-    
+
+
 if __name__ == "__main__":
     if len(sys.argv) and sys.argv[1] == "--test":
         test()
