@@ -11,6 +11,7 @@ import random
 import re
 import sys
 from bisect import bisect_left
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,36 @@ recent access times to bring the number of files or the
 total disk space used down to a given limit.
 Can be run once a day by a cron script
 """
+
+
+class DirNode:
+    # a node in a directory tree, to keep track of paths
+    # and store them in a more efficient way than full strings.
+    def __init__(self):
+        self.name = None
+        self.children = defaultdict(DirNode)
+        self.parent = None
+
+    def insert(self, path):
+        node = self
+        for part in os.path.split(path):
+            child = node.children[part]
+            child.name = part
+            child.parent = node
+            node = child
+        return node
+
+    def path(self):
+        parts = []
+        node = self
+        while node:
+            if node.name:
+                parts.append(node.name)
+            node = node.parent
+        return os.path.join(*reversed(parts))
+
+
+rootnode = DirNode()
 
 
 def fake_timestamp(days):
@@ -42,7 +73,12 @@ def find_versioned_files(root, fake=False):
     if fake:
         # return fake files for testing
         return [
-            (fake_timestamp(30), random.randint(10, 10000000), "fakefile%d" % i)
+            (
+                fake_timestamp(30),
+                random.randint(10, 10000000),
+                rootnode.insert("foo"),
+                "fakefile%d" % i,
+            )
             for i in range(1000)
         ]
 
@@ -53,7 +89,7 @@ def find_versioned_files(root, fake=False):
                 continue
             filepath = os.path.join(dirpath, filename)
             s = os.stat(filepath)
-            entries.append((s.st_atime, s.st_size, filepath))
+            entries.append((s.st_atime, s.st_size, rootnode.insert(dirpath), filename))
     return entries
 
 
@@ -140,7 +176,9 @@ def unlink_files(files):
     n = 0
     for f in files:
         try:
-            os.unlink(f[2])
+            dirnode, filename = f[2], f[3]
+            filename = os.path.join(dirnode.path(), filename)
+            os.unlink(filename)
             n += 1
         except OSError:
             logger.warning("could not remove file %r", f[2])
@@ -340,11 +378,11 @@ def main():
 def test():
     # create a list of files with access times and sizes
     files = [
-        (1, 100, "a"),
-        (2, 200, "b"),
-        (3, 300, "c"),
-        (4, 400, "d"),
-        (5, 500, "e"),
+        (1, 100, "dir", "a"),
+        (2, 200, "dir", "b"),
+        (3, 300, "dir", "c"),
+        (4, 400, "dir", "d"),
+        (5, 500, "dir", "e"),
     ]
     files.sort()
     cumulative_sizes = list(cumulative_sum([f[1] for f in files]))
@@ -379,6 +417,21 @@ def test():
     assert find_atime_limit(files, 5) == 4
     # for time 6, we throw away all files, so the first index to keep is 5
     assert find_atime_limit(files, 6) == 5
+
+    # test the dirnode, by walking some paths
+    found = []
+    if len(sys.argv) > 2:
+        for dirpath, _, filenames in os.walk(sys.argv[2]):
+            for filename in filenames:
+                name = os.path.join(dirpath, filename)
+                node = rootnode.insert(name)
+                assert node.path() == name
+                found.append(node)
+            if len(found) > 100:
+                break
+    print("walked %d paths" % len(found))
+    # make sure all nodes are unique
+    assert len(found) == len(set(found))
 
 
 if __name__ == "__main__":
