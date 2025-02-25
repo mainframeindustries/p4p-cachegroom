@@ -6,4 +6,5 @@ Environment=P4PCACHE=/mnt/p4p/p4p/
 Type=oneshot
 User=perforce
 Nice=10
+SyslogIdentifier=p4p-cleanup
 ExecStart=/usr/bin/python3 /opt/perforce/p4p-cachegroom/p4p-cachegroom.py $P4PCACHE --max-size=200G --min-age=28 --max-size-hard=800G
