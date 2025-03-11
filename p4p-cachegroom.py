@@ -52,6 +52,9 @@ class DirNode:
             node = node.parent
         return os.path.join(*reversed(parts))
 
+    def __str__(self):
+        return self.path()
+
     def __lt__(self, other):
         # make it sortable
         return self.path() < other.path()
