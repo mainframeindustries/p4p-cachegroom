@@ -52,6 +52,9 @@ class DirNode:
             node = node.parent
         return os.path.join(*reversed(parts))
 
+    def __lt__(self, other):
+        # make it sortable
+        return self.path() < other.path()
 
 rootnode = DirNode()
 
@@ -278,7 +281,7 @@ def main():
         return  # without any files, just quit
 
     # sort files according to access time, oldest first (lowest timestamp)
-    files.sort()
+    files.sort(key=lambda x: x[0])
 
     # and create the cumulative sum
     cumulative_sizes = list(cumulative_sum([f[1] for f in files]))
@@ -384,7 +387,7 @@ def test():
         (4, 400, "dir", "d"),
         (5, 500, "dir", "e"),
     ]
-    files.sort()
+    files.sort(key=lambda x : x[0])
     cumulative_sizes = list(cumulative_sum([f[1] for f in files]))
 
     assert cumulative_sizes[-1] == sum(f[1] for f in files)
