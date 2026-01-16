@@ -8,27 +8,33 @@ to set limits on the cache.
 ## Usage
 
 ```sh
-python p4p-cachegroom.py <cache-root> [--dry-run] [--max-size=M] [--max-count=C] [--min-age=m] [--max-age=M]
+python p4p-cachegroom.py <root> [--dry-run] [--max-size MAX_SIZE] [--max-size-hard MAX_SIZE_HARD] [--max-count MAX_COUNT] [--min-age MIN_AGE] [--max-age MAX_AGE] [--verbose] [--fake]
 ```
 
-This will look for versioned perforce file in the `cache-root` folder and apply the provide policy.
+This will look for versioned perforce file in the `root` folder and apply the provided policy.
 
-- `--max-size` and `max-count` set the baseline limit of the number of items to keep.
-  Size can be specified in bytes, or as `K` (kilobytes), `M` (megabytes), `G` (gigabytes) or `T` (terabytes), e.g. `--max-size=500G`  
+- `--max-size` and `--max-count` set the baseline limit of the number of items to keep.
+  Size can be specified in bytes, or as `K` (kilobytes), `M` (megabytes), `G` (gigabytes) or `T` (terabytes), e.g. `--max-size 500G`  
 - `--max-age` can be used to discard anything that hasn't been accessed for the specified number of days.
 - `--min-age` can require files to have been left untouched for at least the given number of days before being removed.  This overrides the baseline limits given.
+- `--max-size-hard` sets a hard maximum total size of files, overriding `--min-age` if necessary.
+- `--verbose` (or `-v`) provides more detailed output during execution.
+- `--fake` performs a dry run with fake files for testing purposes.
+- `--dry-run` performs a dry run without actually deleting files.
 
-Using set notation, if `min-age`, `max-size` , `max-count` and `max-age` represents the files being kept if that option
+Using set notation, if `min-age`, `max-size`, `max-count` and `max-age` represents the files being kept if that option
 is specified alone, then the total (assuming all options are specified) can be found by:
 
 `Union(min_age, Intersection(max-size, max-count, max-age))`
 
+Note: `--max-size-hard` overrides `--min-age` to enforce a hard size limit even for recently accessed files.
+
 ### Examples
 
-1. `python p4p-cachegroom.py /mnt/p4pcache --max-size=400G --min-age=28`
+1. `python p4p-cachegroom.py /mnt/p4pcache --max-size 400G --min-age 28`
    
    Limit the cache to 400G if possible, not throwing away anything that has been touched more recently than in the last four weeks.
-2. `python p4p-cachegroom.py /mnt/p4cache --max-count=1000 --max-age=16`
+2. `python p4p-cachegroom.py /mnt/p4cache --max-count 1000 --max-age 16`
    
    Limit the cache to 1000 files, and not store anything that hasn't been accessed for the last 16 days.
 
