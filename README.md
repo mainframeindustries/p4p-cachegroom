@@ -11,7 +11,7 @@ to set limits on the cache.
 python p4p-cachegroom.py <root> [--dry-run] [--max-size MAX_SIZE] [--max-size-hard MAX_SIZE_HARD] [--max-count MAX_COUNT] [--min-age MIN_AGE] [--max-age MAX_AGE] [--verbose] [--fake]
 ```
 
-This will look for versioned perforce file in the `root` folder and apply the provide policy.
+This will look for versioned perforce file in the `root` folder and apply the provided policy.
 
 - `--max-size` and `--max-count` set the baseline limit of the number of items to keep.
   Size can be specified in bytes, or as `K` (kilobytes), `M` (megabytes), `G` (gigabytes) or `T` (terabytes), e.g. `--max-size 500G`  
