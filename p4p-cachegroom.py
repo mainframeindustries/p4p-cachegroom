@@ -262,9 +262,8 @@ def main():
     parser.add_argument("--fake", action="store_true", help="dry run with fake files")
 
     args = parser.parse_args()
-    # Optional: Uncomment to require at least one limiting argument
-    # if not (args.max_size or args.max_count or args.max_age):
-    #     parser.error("At least one of --max-size, --max-count, --max-age required")
+    if not (args.max_size or args.max_count or args.max_age):
+        parser.error("At least one of --max-size, --max-count, --max-age required")
     if args.fake:
         args.dry_run = True
 
