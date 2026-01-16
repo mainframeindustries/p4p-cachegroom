@@ -1,4 +1,4 @@
-#! /bin/env python
+#!/usr/bin/env python
 
 from __future__ import print_function
 
@@ -187,7 +187,7 @@ def unlink_files(files):
             os.unlink(filename)
             n += 1
         except OSError:
-            logger.warning("could not remove file %r", f[2])
+            logger.warning("could not remove file %r", filename)
     return n
 
 
@@ -262,7 +262,7 @@ def main():
     parser.add_argument("--fake", action="store_true", help="dry run with fake files")
 
     args = parser.parse_args()
-    if 0 and not (args.max_size or args.max_count or args.max_age):
+    if not (args.max_size or args.max_count or args.max_age):
         parser.error("At least one of --max-size, --max-count, --max-age required")
     if args.fake:
         args.dry_run = True
@@ -273,7 +273,7 @@ def main():
         print("  max-count: %r" % args.max_count)
         print("  max-age: %r" % args.max_age)
         print("  min-age: %r" % args.min_age)
-        print("  max-size-hard: %r" % args.max_age)
+        print("  max-size-hard: %s" % format_size2(args.max_size_hard))
 
     files = find_versioned_files(args.root, args.fake)
 
@@ -390,7 +390,7 @@ def test():
         (4, 400, "dir", "d"),
         (5, 500, "dir", "e"),
     ]
-    files.sort(key=lambda x : x[0])
+    files.sort(key=lambda x: x[0])
     cumulative_sizes = list(cumulative_sum([f[1] for f in files]))
 
     assert cumulative_sizes[-1] == sum(f[1] for f in files)
