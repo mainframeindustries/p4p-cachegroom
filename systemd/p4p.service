@@ -7,11 +7,13 @@ Environment=P4SSLDIR=/opt/perforce/ssl/p4p
 Environment=P4PCACHE=/mnt/p4p/p4p/
 Environment=P4TARGET=
 Environment=P4PORT=ssl::1666
+# enable this if you want to debug, otherwise, this can be a bottleneck
+# the verboseness of the log file set by -v goes up to 3
+# Environment=P4DEBUG=proxy.monitor.level=2
 User=perforce
 UMask=0027
 
-#the verboseness of the log file set by -v goes up to 3
-ExecStart=/sbin/p4p -v proxy.monitor.level=2
+ExecStart=/sbin/p4p -v lbr.procy.case=2
 
 [Install]
 WantedBy=default.target
