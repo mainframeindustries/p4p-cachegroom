@@ -13,7 +13,8 @@ Environment=P4PORT=ssl::1666
 User=perforce
 UMask=0027
 
-ExecStart=/sbin/p4p -v lbr.procy.case=2
+ExecStart=/sbin/p4p -v lbr.proxy.case=2
 
 [Install]
 WantedBy=default.target
+
