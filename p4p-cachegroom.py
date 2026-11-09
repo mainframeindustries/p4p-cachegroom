@@ -441,7 +441,7 @@ def test():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) and sys.argv[1] == "--test":
+    if len(sys.argv) == 2 and sys.argv[1] == "--test":
         test()
         sys.exit(0)
 
